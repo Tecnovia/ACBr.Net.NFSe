@@ -1016,7 +1016,9 @@ namespace ACBr.Net.NFSe.Providers
             loteBuilder.Append("<ConsultarNfseEnvio xmlns=\"http://www.ginfes.com.br/servico_consultar_nfse_envio_v03.xsd\" xmlns:tipos=\"http://www.ginfes.com.br/tipos_v03.xsd\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">");
             loteBuilder.Append("<Prestador>");
             loteBuilder.Append($"<tipos:Cnpj>{Configuracoes.PrestadorPadrao.CpfCnpj.ZeroFill(14)}</tipos:Cnpj>");
-            loteBuilder.Append($"<tipos:InscricaoMunicipal>{Configuracoes.PrestadorPadrao.InscricaoMunicipal}</tipos:InscricaoMunicipal>");
+            // Alteração Tecnovia
+            if (!string.IsNullOrWhiteSpace(Configuracoes.PrestadorPadrao.InscricaoMunicipal))
+                loteBuilder.Append($"<tipos:InscricaoMunicipal>{Configuracoes.PrestadorPadrao.InscricaoMunicipal}</tipos:InscricaoMunicipal>");
             loteBuilder.Append("</Prestador>");
 
             if (!numeroNfse.IsEmpty())
@@ -1033,8 +1035,12 @@ namespace ACBr.Net.NFSe.Providers
             if (!cnpjTomador.IsEmpty() & !imTomador.IsEmpty())
             {
                 loteBuilder.Append("<Tomador>");
-                loteBuilder.Append($"<tipos:CpfCnpj>{cnpjTomador.ZeroFill(14)}</tipos:CpfCnpj>");
-                loteBuilder.Append($"<tipos:InscricaoMunicipal>{imTomador}</tipos:InscricaoMunicipal>");
+                // Alteração Tecnovia
+                // loteBuilder.Append($"<tipos:CpfCnpj>{cnpjTomador.ZeroFill(14)}</tipos:CpfCnpj>");
+                loteBuilder.Append($"<tipos:CpfCnpj><tipos:Cnpj>{cnpjTomador.ZeroFill(14)}</tipos:Cnpj></tipos:CpfCnpj>");
+                // Alteração Tecnovia
+                if (!string.IsNullOrWhiteSpace(imTomador))
+                    loteBuilder.Append($"<tipos:InscricaoMunicipal>{imTomador}</tipos:InscricaoMunicipal>");
                 loteBuilder.Append("</Tomador>");
             }
 
@@ -1068,6 +1074,9 @@ namespace ACBr.Net.NFSe.Providers
             {
                 using (var cliente = GetCliente(TipoUrl.ConsultaNFSe))
                 {
+                    // Alteração Tecnovia
+                    ((System.ServiceModel.BasicHttpBinding)cliente.Endpoint.Binding).MaxReceivedMessageSize = 65536 * 10;
+
                     retornoWebservice.XmlRetorno = cliente.ConsultarNfse(GerarCabecalho(), retornoWebservice.XmlEnvio);
                     retornoWebservice.EnvelopeEnvio = cliente.EnvelopeEnvio;
                     retornoWebservice.EnvelopeRetorno = cliente.EnvelopeRetorno;
@@ -1081,23 +1090,27 @@ namespace ACBr.Net.NFSe.Providers
             GravarArquivoEmDisco(retornoWebservice.XmlRetorno, $"ConNota-{DateTime.Now:yyyyMMddssfff}-{numeroNfse}-ret.xml");
 
             // Analisa mensagem de retorno
-            var xmlRet = XDocument.Parse(retornoWebservice.XmlRetorno);
-            MensagemErro(retornoWebservice, xmlRet, "ConsultarNfseResposta");
-            if (retornoWebservice.Erros.Any()) return retornoWebservice;
-
-            var retornoLote = xmlRet.ElementAnyNs("ConsultarNfseResposta");
-            var listaNfse = retornoLote?.ElementAnyNs("ListaNfse");
-            if (listaNfse == null)
+            // Alteração Tecnovia
+            if (!string.IsNullOrEmpty(retornoWebservice.XmlRetorno))
             {
-                retornoWebservice.Erros.Add(new Evento { Codigo = "0", Descricao = "Lista de NFSe não encontrada! (ListaNfse)" });
-                return retornoWebservice;
-            }
+                var xmlRet = XDocument.Parse(retornoWebservice.XmlRetorno);
+                MensagemErro(retornoWebservice, xmlRet, "ConsultarNfseResposta");
+                if (retornoWebservice.Erros.Any()) return retornoWebservice;
 
-            foreach (var compNfse in listaNfse.ElementsAnyNs("CompNfse"))
-            {
-                // Carrega a nota fiscal na coleção de Notas Fiscais
-                var nota = LoadXml(compNfse.AsString());
-                notas.Add(nota);
+                var retornoLote = xmlRet.ElementAnyNs("ConsultarNfseResposta");
+                var listaNfse = retornoLote?.ElementAnyNs("ListaNfse");
+                if (listaNfse == null)
+                {
+                    retornoWebservice.Erros.Add(new Evento { Codigo = "0", Descricao = "Lista de NFSe não encontrada! (ListaNfse)" });
+                    return retornoWebservice;
+                }
+
+                foreach (var compNfse in listaNfse.ElementsAnyNs("CompNfse"))
+                {
+                    // Carrega a nota fiscal na coleção de Notas Fiscais
+                    var nota = LoadXml(compNfse.AsString());
+                    notas.Add(nota);
+                }
             }
 
             retornoWebservice.Sucesso = true;

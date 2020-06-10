@@ -33,6 +33,7 @@ using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.Text;
 using System.Xml;
@@ -97,7 +98,7 @@ namespace ACBr.Net.NFSe.Providers
                 request.Properties[HttpRequestMessageProperty.Name] = requestMessage;
 
                 lock (serviceLock)
-                {
+                {                    
                     var response = Channel.Request(request);
                     Guard.Against<ACBrDFeException>(response == null, "Nenhum retorno do webservice.");
                     var reader = response.GetReaderAtBodyContents();

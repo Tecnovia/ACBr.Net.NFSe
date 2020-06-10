@@ -103,9 +103,13 @@ namespace ACBr.Net.NFSe.Providers
             message.Append("<arg1>");
             message.AppendEnvio(dados);
             message.Append("</arg1>");
-            message.Append("</gin:ConsultarNfseV3Response>");
+            // Alteração Tecnovia
+            //message.Append("</gin:ConsultarNfseV3Response>");
+            message.Append("</gin:ConsultarNfseV3>");
 
-            return Execute(message.ToString(), "RecepcionarLoteRpsV3Response");
+            // Correção Tecnovia
+            //return Execute(message.ToString(), "RecepcionarLoteRpsV3Response");
+            return Execute(message.ToString(), "ConsultarNfseV3Response");
         }
 
         public string CancelarNfse(string cabecalho, string dados)
